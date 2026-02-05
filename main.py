@@ -229,30 +229,21 @@ async def proxy_image(url: str, sig: str):
 
 	headers = {
 		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0",
-		"Accept": "*/*",
+		"Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
 		"Accept-Language": "en-US,en;q=0.9",
 		"Referer": "https://gemini.google.com/",
-		"Origin": "https://gemini.google.com",
 		"preferanonymous": "1",
 		"cache-control": "no-cache",
 		"pragma": "no-cache",
 		"priority": "u=1, i",
 		"sec-ch-ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
-		"sec-ch-ua-arch": '"x86"',
-		"sec-ch-ua-bitness": '"64"',
-		"sec-ch-ua-form-factors": '"Desktop"',
-		"sec-ch-ua-full-version": '"144.0.3719.104"',
-		"sec-ch-ua-full-version-list": '"Not(A:Brand";v="8.0.0.0", "Chromium";v="144.0.7559.110", "Microsoft Edge";v="144.0.3719.104"',
 		"sec-ch-ua-mobile": "?0",
-		"sec-ch-ua-model": '""',
 		"sec-ch-ua-platform": '"Windows"',
-		"sec-ch-ua-platform-version": '"19.0.0"',
-		"sec-ch-ua-wow64": "?0",
-		"sec-fetch-dest": "empty",
-		"sec-fetch-mode": "cors",
+		"sec-fetch-dest": "image",
+		"sec-fetch-mode": "no-cors",
 		"sec-fetch-site": "cross-site",
-		"sec-fetch-storage-access": "none",
 	}
+
 
 	# IMPORTANT: Use a clean AsyncClient WITHOUT the Gemini session cookies.
 	# We handle redirects manually to ensure ALL custom headers are preserved across domain hops.
