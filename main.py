@@ -233,17 +233,34 @@ async def proxy_image(url: str, sig: str):
 		"Accept-Language": "en-US,en;q=0.9",
 		"Referer": "https://gemini.google.com/",
 		"preferanonymous": "1",
-		"Cache-Control": "no-cache",
-		"Pragma": "no-cache",
+		"cache-control": "no-cache",
+		"pragma": "no-cache",
+		"priority": "u=1, i",
+		"sec-ch-ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Microsoft Edge";v="144"',
+		"sec-ch-ua-arch": '"x86"',
+		"sec-ch-ua-bitness": '"64"',
+		"sec-ch-ua-form-factors": '"Desktop"',
+		"sec-ch-ua-full-version": '"144.0.3719.104"',
+		"sec-ch-ua-full-version-list": '"Not(A:Brand";v="8.0.0.0", "Chromium";v="144.0.7559.110", "Microsoft Edge";v="144.0.3719.104"',
+		"sec-ch-ua-mobile": "?0",
+		"sec-ch-ua-model": '""',
+		"sec-ch-ua-platform": '"Windows"',
+		"sec-ch-ua-platform-version": '"19.0.0"',
+		"sec-ch-ua-wow64": "?0",
+		"sec-fetch-dest": "image",
+		"sec-fetch-mode": "no-cors",
+		"sec-fetch-site": "cross-site",
+		"sec-fetch-storage-access": "none",
 	}
 
 	# IMPORTANT: Use a clean AsyncClient WITHOUT the Gemini session cookies.
-	# Official Gemini web app fetches these images anonymously with 'preferanonymous: 1'.
-	async with httpx.AsyncClient() as client:
+	# Enabling http2=True to match the official web app's request behavior.
+	async with httpx.AsyncClient(http2=True) as client:
 		try:
 			resp = await client.get(url, follow_redirects=True, timeout=15.0, headers=headers)
 			if resp.status_code != 200:
 				logger.error(f"Google returned {resp.status_code} for image: {url}")
+				logger.debug(f"Response headers: {resp.headers}")
 			
 			resp.raise_for_status()
 
