@@ -179,6 +179,26 @@ async def verify_api_key(authorization: str = Header(None)):
 
 	return token
 
+def get_image_signature(url: str) -> str:
+	"""
+	Generate a HMAC-SHA256 signature for the image URL using API_KEY as secret.
+	"""
+	secret = API_KEY.encode()
+	return hmac.new(secret, url.encode(), hashlib.sha256).hexdigest()
+
+
+# Dependency to get the initialized Gemini client
+async def get_gemini_client():
+	global gemini_client
+	if gemini_client is None:
+		try:
+			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
+			await gemini_client.init(timeout=300)
+		except Exception as e:
+			logger.error(f"Failed to initialize Gemini client: {str(e)}")
+			raise HTTPException(status_code=500, detail=f"Failed to initialize Gemini client: {str(e)}")
+	return gemini_client
+
 
 @app.get("/gemini-proxy/image")
 async def proxy_image(url: str, sig: str, client: GeminiClient = Depends(get_gemini_client)):
@@ -345,37 +365,9 @@ def prepare_conversation(messages: List[Message]) -> tuple:
 	return conversation, temp_files
 
 
-def get_image_signature(url: str) -> str:
-	"""
-	Generate a HMAC-SHA256 signature for the image URL using API_KEY as secret.
-	"""
-	secret = API_KEY.encode()
-	return hmac.new(secret, url.encode(), hashlib.sha256).hexdigest()
-
-
-# Dependency to get the initialized Gemini client
-async def get_gemini_client():
-	global gemini_client
-	if gemini_client is None:
-		try:
-			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
-			await gemini_client.init(timeout=300)
-		except Exception as e:
-			logger.error(f"Failed to initialize Gemini client: {str(e)}")
-			raise HTTPException(status_code=500, detail=f"Failed to initialize Gemini client: {str(e)}")
-	return gemini_client
-
-
 @app.post("/v1/chat/completions")
-async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request, api_key: str = Depends(verify_api_key)):
+async def create_chat_completion(request: ChatCompletionRequest, raw_request: Request, gemini_client: GeminiClient = Depends(get_gemini_client), api_key: str = Depends(verify_api_key)):
 	try:
-		# 确保客户端已初始化
-		global gemini_client
-		if gemini_client is None:
-			gemini_client = GeminiClient(SECURE_1PSID, SECURE_1PSIDTS)
-			await gemini_client.init(timeout=300)
-			logger.info("Gemini client initialized successfully")
-
 		# 转换消息为对话格式
 		conversation, temp_files = prepare_conversation(request.messages)
 		logger.info(f"Prepared conversation: {conversation}")
