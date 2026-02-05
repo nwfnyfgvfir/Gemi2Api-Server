@@ -205,7 +205,7 @@ async def proxy_image(url: str, sig: str):
 	"""
 	Proxy images from Google domains to bypass browser security policies.
 	Requires a valid HMAC signature.
-	Uses anonymous request pattern (no cookies) with specific headers to mimic Gemini web app.
+	Uses the session's authenticated cookies to match gemini-webapi's native fetch logic.
 	"""
 	# Verify signature
 	expected_sig = get_image_signature(url)
@@ -249,7 +249,6 @@ async def proxy_image(url: str, sig: str):
 			
 			if resp.status_code != 200:
 				logger.error(f"Google returned {resp.status_code} for image: {url}")
-				logger.debug(f"Response headers: {resp.headers}")
 			
 			resp.raise_for_status()
 
@@ -262,14 +261,12 @@ async def proxy_image(url: str, sig: str):
 					"Cache-Control": "public, max-age=86400",  # Cache for 24 hours
 				},
 			)
-
 		except httpx.HTTPStatusError as e:
 			logger.error(f"Failed to fetch image: {e.response.status_code} for {url}")
 			raise HTTPException(status_code=e.response.status_code, detail=f"Failed to fetch image: Google returned {e.response.status_code}")
 		except Exception as e:
 			logger.error(f"Proxy error: {str(e)}")
 			raise HTTPException(status_code=500, detail=f"Internal proxy error: {str(e)}")
-
 
 
 # Simple error handler middleware
