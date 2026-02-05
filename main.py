@@ -1,5 +1,7 @@
 import asyncio
 import base64
+import hmac
+import hashlib
 import json
 import logging
 import os
@@ -43,6 +45,7 @@ SECURE_1PSID = os.environ.get("SECURE_1PSID", "")
 SECURE_1PSIDTS = os.environ.get("SECURE_1PSIDTS", "")
 API_KEY = os.environ.get("API_KEY", "")
 ENABLE_THINKING = os.environ.get("ENABLE_THINKING", "false").lower() == "true"
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 
 # Print debug info at startup
 if not SECURE_1PSID or not SECURE_1PSIDTS:
@@ -177,11 +180,18 @@ async def verify_api_key(authorization: str = Header(None)):
 	return token
 
 
-@app.get("/v1/proxy/image")
-async def proxy_image(url: str):
+@app.get("/gemini-proxy/image")
+async def proxy_image(url: str, sig: str):
 	"""
 	Proxy images from Google domains to bypass browser security policies.
+	Requires a valid HMAC signature.
 	"""
+	# Verify signature
+	expected_sig = get_image_signature(url)
+	if not hmac.compare_digest(sig, expected_sig):
+		logger.warning(f"Invalid signature for proxy request: {url}")
+		raise HTTPException(status_code=403, detail="Invalid signature")
+
 	# Basic validation to prevent open proxying
 	allowed_domains = ["google.com", "googleusercontent.com", "gstatic.com"]
 	# Extract domain from URL
@@ -332,6 +342,14 @@ def prepare_conversation(messages: List[Message]) -> tuple:
 	return conversation, temp_files
 
 
+def get_image_signature(url: str) -> str:
+	"""
+	Generate a HMAC-SHA256 signature for the image URL using API_KEY as secret.
+	"""
+	secret = API_KEY.encode()
+	return hmac.new(secret, url.encode(), hashlib.sha256).hexdigest()
+
+
 # Dependency to get the initialized Gemini client
 async def get_gemini_client():
 	global gemini_client
@@ -389,12 +407,13 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 			reply_text += response.text
 		# 提取并追加图片响应
 		if hasattr(response, "images") and response.images:
-			base_url = str(raw_request.base_url).rstrip("/")
+			base_url = PUBLIC_BASE_URL or str(raw_request.base_url).rstrip("/")
 			for img in response.images:
 				# 检查对象是否有 url 属性 (GeneratedImage 或 WebImage)
 				img_url = getattr(img, "url", None)
 				if img_url:
-					proxy_url = f"{base_url}/v1/proxy/image?url={quote(img_url)}"
+					sig = get_image_signature(img_url)
+					proxy_url = f"{base_url}/gemini-proxy/image?url={quote(img_url)}&sig={sig}"
 					reply_text += f"\n\n![image]({proxy_url})"
 		else:
 			reply_text += str(response)
