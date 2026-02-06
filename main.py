@@ -71,12 +71,21 @@ def load_or_generate_secret() -> str:
 		os.makedirs(os.path.dirname(SECRET_FILE_PATH), exist_ok=True)
 		with open(SECRET_FILE_PATH, "w") as f:
 			f.write(new_secret)
+		
+		# Set restrictive permissions (user-only readable/writable)
+		try:
+			os.chmod(SECRET_FILE_PATH, 0o600)
+		except Exception as e:
+			logger.warning(f"Failed to set restrictive permissions on {SECRET_FILE_PATH}: {e}")
+			
 		logger.info(f"Generated new proxy secret and saved to {SECRET_FILE_PATH}")
 		return new_secret
 	except Exception as e:
 		logger.error(f"Error writing secret file: {e}")
-		# if unable to save, fallback to use API_KEY or SECURE_1PSID
-		return API_KEY or SECURE_1PSID
+		# if unable to save, return an in-memory ephemeral secret instead of using API_KEY or SECURE_1PSID
+		ephemeral_secret = secrets.token_urlsafe(32)
+		logger.warning("Using an ephemeral secret for this session.")
+		return ephemeral_secret
 
 
 SIGNATURE_SECRET = load_or_generate_secret()
