@@ -8,7 +8,7 @@ services:
     volumes:
       - ./main.py:/app/main.py
       - ./pyproject.toml:/app/pyproject.toml
-      - ./.proxy_secret:/app/.proxy_secret
+      - ./secrets:/app/secrets
     env_file:
       - .env
     restart: unless-stopped

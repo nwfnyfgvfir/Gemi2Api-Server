@@ -47,7 +47,7 @@ SECURE_1PSIDTS = os.environ.get("SECURE_1PSIDTS", "")
 API_KEY = os.environ.get("API_KEY", "")
 ENABLE_THINKING = os.environ.get("ENABLE_THINKING", "false").lower() == "true"
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
-SECRET_FILE_PATH = os.path.join(os.path.dirname(__file__), ".proxy_secret")
+SECRET_FILE_PATH = os.path.join(os.path.dirname(__file__), "secrets", "proxy_secret")
 
 
 def load_or_generate_secret() -> str:
@@ -67,6 +67,8 @@ def load_or_generate_secret() -> str:
 	# Generate new secret if not found or error occurred
 	new_secret = secrets.token_hex(32)
 	try:
+		# Ensure directory exists
+		os.makedirs(os.path.dirname(SECRET_FILE_PATH), exist_ok=True)
 		with open(SECRET_FILE_PATH, "w") as f:
 			f.write(new_secret)
 		logger.info(f"Generated new proxy secret and saved to {SECRET_FILE_PATH}")
