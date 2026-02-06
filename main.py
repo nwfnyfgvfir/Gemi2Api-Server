@@ -84,7 +84,7 @@ def load_or_generate_secret() -> str:
 		logger.error(f"Error writing secret file: {e}")
 		# if unable to save, return an in-memory ephemeral secret instead of using API_KEY or SECURE_1PSID
 		ephemeral_secret = secrets.token_urlsafe(32)
-		logger.warning("Using an ephemeral secret for this session.")
+		logger.warning("Using an in-memory secret to proxy images for this session.")
 		return ephemeral_secret
 
 
@@ -401,7 +401,6 @@ async def create_chat_completion(request: ChatCompletionRequest, raw_request: Re
 			reply_text += response.text
 		else:
 			reply_text += str(response)
-
 		# 提取并追加图片响应
 		if hasattr(response, "images") and response.images:
 			base_url = PUBLIC_BASE_URL or str(raw_request.base_url).rstrip("/")
