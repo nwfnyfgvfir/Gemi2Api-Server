@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+import secrets
 import tempfile
 import time
 import uuid
@@ -46,6 +47,37 @@ SECURE_1PSIDTS = os.environ.get("SECURE_1PSIDTS", "")
 API_KEY = os.environ.get("API_KEY", "")
 ENABLE_THINKING = os.environ.get("ENABLE_THINKING", "false").lower() == "true"
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
+SECRET_FILE_PATH = os.path.join(os.path.dirname(__file__), ".proxy_secret")
+
+
+def load_or_generate_secret() -> str:
+	"""
+	Load the signature secret from file, or generate a new one if not found.
+	"""
+	if os.path.exists(SECRET_FILE_PATH):
+		try:
+			with open(SECRET_FILE_PATH, "r") as f:
+				secret = f.read().strip()
+				if secret:
+					logger.info(f"Loaded proxy secret from {SECRET_FILE_PATH}")
+					return secret
+		except Exception as e:
+			logger.warning(f"Failed to read secret file, trying to generate a new one: {e}")
+
+	# Generate new secret if not found or error occurred
+	new_secret = secrets.token_hex(32)
+	try:
+		with open(SECRET_FILE_PATH, "w") as f:
+			f.write(new_secret)
+		logger.info(f"Generated new proxy secret and saved to {SECRET_FILE_PATH}")
+		return new_secret
+	except Exception as e:
+		logger.error(f"Error writing secret file: {e}")
+		# if unable to save, fallback to use API_KEY or SECURE_1PSID
+		return API_KEY or SECURE_1PSID
+
+
+SIGNATURE_SECRET = load_or_generate_secret()
 
 # Print debug info at startup
 if not SECURE_1PSID or not SECURE_1PSIDTS:
@@ -308,9 +340,9 @@ async def get_gemini_client():
 
 def get_image_signature(url: str) -> str:
 	"""
-	Generate a HMAC-SHA256 signature for the image URL using SECURE_1PSID as secret.
+	Generate a HMAC-SHA256 signature for the image URL using the persistent SIGNATURE_SECRET.
 	"""
-	secret = SECURE_1PSID.encode()
+	secret = SIGNATURE_SECRET.encode()
 	return hmac.new(secret, url.encode(), hashlib.sha256).hexdigest()
 
 
